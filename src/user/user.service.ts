@@ -6,7 +6,7 @@ import { Response } from 'express';
 import { Logger } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { MailService } from '../common/mail/mail.service';
-import { HelperService } from '../common/helper/opt';
+import { HelperService } from '../common/helper/otp';
 
 @Injectable()
 export class UserService {
