@@ -1,8 +1,17 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Patch,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/UserCreate.dto';
+import { CreateUserDto, UpdatePasswordDto } from './dto/UserCreate.dto';
 import { Response } from 'express';
-import { ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 
 @ApiTags('user')
 @Controller('user')
@@ -41,5 +50,23 @@ export class UserController {
     @Body() body: { email: string; otp: number },
   ) {
     return this.userService.verifyUserOtp(res, body.email, body.otp);
+  }
+
+  @Patch('update-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiBody({ type: UpdatePasswordDto })
+  @ApiResponse({ status: 200, description: 'Password updated successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Old password is incorrect or new/confirm do not match',
+  })
+  async updateUserPassword(
+    @Res() res: Response,
+    @Req() req,
+    @Body() dto: UpdatePasswordDto,
+  ) {
+    // userId from JWT payload (set by JwtStrategy)
+    return this.userService.updateUserPassword(res, req.user.userId, dto);
   }
 }

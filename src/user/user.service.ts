@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/UserCreate.dto';
+import { CreateUserDto, UpdatePasswordDto } from './dto/UserCreate.dto';
 import { DatabaseService } from '../database/database.service';
 import { ResponseService } from '../common/services/response.service';
 import { Response } from 'express';
@@ -229,4 +229,64 @@ export class UserService {
       );
     }
   }
+
+  async updateUserPassword(
+  res: Response,
+  userId: string,
+  dto: UpdatePasswordDto,
+): Promise<Response> {
+  try {
+    // Find user by id
+    const user = await this.db.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.NOT_FOUND,
+        'User not found',
+      );
+    }
+
+    // Check old password
+    const isOldPasswordValid = await bcrypt.compare(dto.oldPassword, user.password);
+    if (!isOldPasswordValid) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.BAD_REQUEST,
+        'Old password is incorrect',
+      );
+    }
+
+    // Check new and confirm password match
+    if (dto.newPassword !== dto.confirmPassword) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.BAD_REQUEST,
+        'New password and confirm password do not match',
+      );
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+
+    // Update password
+    await this.db.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return this.responseService.sendSuccess(
+      res,
+      HttpStatus.OK,
+      'Password updated successfully',
+    );
+  } catch (error) {
+    this.logger.error('Error updating password:', error);
+    return this.responseService.sendError(
+      res,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to update password',
+    );
+  }
+}
 }
