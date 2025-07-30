@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -10,8 +12,9 @@ import {
 import { UserService } from './user.service';
 import { CreateUserDto, UpdatePasswordDto } from './dto/UserCreate.dto';
 import { Response } from 'express';
-import { ApiTags, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBody, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { Role } from 'generated/prisma';
 
 @ApiTags('user')
 @Controller('user')
@@ -68,5 +71,23 @@ export class UserController {
   ) {
     // userId from JWT payload (set by JwtStrategy)
     return this.userService.updateUserPassword(res, req.user.userId, dto);
+  }
+
+  @Get('role-wise-list')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    enum: Role,
+    description: 'Optional. If provided, fetches users of this role only.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Fetched users grouped by role or by selected role',
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getRoleWiseList(@Res() res: Response, @Query('role') role?: Role) {
+    return this.userService.getRoleWiseList(res, role);
   }
 }

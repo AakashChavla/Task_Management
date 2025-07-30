@@ -61,7 +61,7 @@ export class AuthService {
         'Login successful',
         {
           access_token: token,
-          user: userData,
+          // user: userData,
         },
       );
     } catch (error) {
@@ -73,4 +73,6 @@ export class AuthService {
       );
     }
   }
+
+
 }

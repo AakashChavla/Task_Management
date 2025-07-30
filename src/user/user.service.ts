@@ -7,6 +7,7 @@ import { Logger } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { MailService } from '../common/mail/mail.service';
 import { HelperService } from '../common/helper/otp';
+import { Role } from 'generated/prisma';
 
 @Injectable()
 export class UserService {
@@ -231,61 +232,109 @@ export class UserService {
   }
 
   async updateUserPassword(
+    res: Response,
+    userId: string,
+    dto: UpdatePasswordDto,
+  ): Promise<Response> {
+    try {
+      // Find user by id
+      const user = await this.db.user.findUnique({ where: { id: userId } });
+
+      if (!user) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          'User not found',
+        );
+      }
+
+      // Check old password
+      const isOldPasswordValid = await bcrypt.compare(
+        dto.oldPassword,
+        user.password,
+      );
+      if (!isOldPasswordValid) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          'Old password is incorrect',
+        );
+      }
+
+      // Check new and confirm password match
+      if (dto.newPassword !== dto.confirmPassword) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          'New password and confirm password do not match',
+        );
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+
+      // Update password
+      await this.db.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        'Password updated successfully',
+      );
+    } catch (error) {
+      this.logger.error('Error updating password:', error);
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'Failed to update password',
+      );
+    }
+  }
+
+  // ========== for Admin ======//
+async getRoleWiseList(
   res: Response,
-  userId: string,
-  dto: UpdatePasswordDto,
+  role?: Role,
 ): Promise<Response> {
   try {
-    // Find user by id
-    const user = await this.db.user.findUnique({ where: { id: userId } });
-
-    if (!user) {
-      return this.responseService.sendError(
+    if (role) {
+      // Fetch users of a specific role
+      const users = await this.db.user.findMany({
+        where: { role, isVerified: true },
+      });
+      return this.responseService.sendSuccess(
         res,
-        HttpStatus.NOT_FOUND,
-        'User not found',
+        HttpStatus.OK,
+        `Fetched users with role ${role}`,
+        users,
+      );
+    } else {
+      // Fetch all roles grouped
+      const admins = await this.db.user.findMany({
+        where: { role: Role.ADMIN, isVerified: true },
+      });
+      const managers = await this.db.user.findMany({
+        where: { role: Role.MANAGER, isVerified: true },
+      });
+      const usersList = await this.db.user.findMany({
+        where: { role: Role.USER, isVerified: true },
+      });
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        'Fetched users grouped by role',
+        { admins, managers, users: usersList },
       );
     }
-
-    // Check old password
-    const isOldPasswordValid = await bcrypt.compare(dto.oldPassword, user.password);
-    if (!isOldPasswordValid) {
-      return this.responseService.sendError(
-        res,
-        HttpStatus.BAD_REQUEST,
-        'Old password is incorrect',
-      );
-    }
-
-    // Check new and confirm password match
-    if (dto.newPassword !== dto.confirmPassword) {
-      return this.responseService.sendError(
-        res,
-        HttpStatus.BAD_REQUEST,
-        'New password and confirm password do not match',
-      );
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
-
-    // Update password
-    await this.db.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
-    });
-
-    return this.responseService.sendSuccess(
-      res,
-      HttpStatus.OK,
-      'Password updated successfully',
-    );
   } catch (error) {
-    this.logger.error('Error updating password:', error);
+    this.logger.error('Error getting users by role:', error.message);
     return this.responseService.sendError(
       res,
       HttpStatus.INTERNAL_SERVER_ERROR,
-      'Failed to update password',
+      'Internal server error',
     );
   }
 }

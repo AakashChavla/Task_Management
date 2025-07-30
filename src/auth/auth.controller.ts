@@ -28,8 +28,8 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        email: { type: 'string', example: 'user@example.com' },
-        password: { type: 'string', example: 'yourPassword123' },
+        email: { type: 'string', example: 'akash.cilans@gmail.com' },
+        password: { type: 'string', example: 'password123' },
       },
       required: ['email', 'password'],
     },
