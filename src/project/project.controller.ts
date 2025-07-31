@@ -2,17 +2,15 @@ import {
   Controller,
   Post,
   Body,
-  Req,
   Res,
   UseGuards,
-  HttpStatus,
   Get,
   Param,
   Delete,
   Patch,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
-import { CreateProjectDto } from 'src/user/dto/UserCreate.dto';
+import { CreateProjectDto } from './dto/project.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import {
   ApiTags,

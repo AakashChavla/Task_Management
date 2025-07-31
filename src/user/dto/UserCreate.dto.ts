@@ -17,16 +17,11 @@ export enum Role {
   MANAGER = 'MANAGER',
 }
 
-export class CreateProjectDto {
-  @ApiProperty({ example: 'My Project', description: 'Project name' })
-  @IsString({ message: 'Project name must be a string' })
-  @MinLength(2, { message: 'Project name must be at least 2 characters' })
-  name: string;
-
-  @ApiPropertyOptional({ example: 'Project description' })
-  @IsOptional()
-  @IsString({ message: 'Description must be a string' })
-  description?: string;
+export class CreateCompanyDto {
+  @ApiProperty({ example: 'Acme Corp', description: 'Company name' })
+  @IsString({ message: 'Company name must be a string' })
+  @MinLength(2, { message: 'Company name must be at least 2 characters' })
+  companyName: string;
 }
 
 export class CreateUserDto {
@@ -35,7 +30,7 @@ export class CreateUserDto {
   @MinLength(2, { message: 'Name must be at least 2 characters' })
   name: string;
 
-  @ApiProperty({ example: 'john@example.com' })
+  @ApiProperty({ example: 'akash.cilans+test@gmail.com' })
   @IsEmail({}, { message: 'Invalid email address' })
   email: string;
 
@@ -55,16 +50,15 @@ export class CreateUserDto {
   @IsBoolean({ message: 'isApproved must be a boolean' })
   isApproved?: boolean;
 
-  @ApiPropertyOptional({ enum: Role, example: Role.USER })
+  @ApiPropertyOptional({ enum: Role, example: Role.MANAGER })
   @IsOptional()
   @IsEnum(Role, { message: 'Role must be ADMIN, USER, or MANAGER' })
   role?: Role;
 
-  @ApiPropertyOptional({ type: CreateProjectDto })
-  @IsOptional()
+  @ApiProperty({ type: CreateCompanyDto })
   @ValidateNested()
-  @Type(() => CreateProjectDto)
-  project?: CreateProjectDto;
+  @Type(() => CreateCompanyDto)
+  company: CreateCompanyDto;
 }
 
 export class UpdatePasswordDto {

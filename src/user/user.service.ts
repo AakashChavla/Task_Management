@@ -20,88 +20,60 @@ export class UserService {
     private readonly mailService: MailService,
   ) {}
 
-  async createUser(
-    res: Response,
-    createUserDto: CreateUserDto,
-  ): Promise<Response> {
-    try {
-      // Check if email already exists
-      const existingUser = await this.db.user.findUnique({
-        where: { email: createUserDto.email },
-        include: { Project: true },
-      });
+async createUser(
+  res: Response,
+  createUserDto: CreateUserDto,
+): Promise<Response> {
+  try {
+    // Check if email already exists
+    const existingUser = await this.db.user.findUnique({
+      where: { email: createUserDto.email },
+    });
 
-      // Generate OTP and timestamp
-      const otp = this.helper.generateOTP();
-      const otpCreatedAt = new Date();
+    if (existingUser) {
+      if (!existingUser.isVerified) {
+        // Prepare update data
+        const updateData: any = {
+          name: createUserDto.name,
+          password: await bcrypt.hash(createUserDto.password, 10),
+          isApproved: createUserDto.isApproved ?? true,
+          role: createUserDto.role ?? 'MANAGER',
+          otp: this.helper.generateOTP(),
+          otpCreatedAt: new Date(),
+        };
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+        const updatedUser = await this.db.user.update({
+          where: { email: createUserDto.email },
+          data: updateData,
+        });
 
-      if (existingUser) {
-        if (!existingUser.isVerified) {
-          // Prepare update data
-          const updateData: any = {
-            name: createUserDto.name,
-            password: hashedPassword,
-            isApproved: createUserDto.isApproved ?? true,
-            role: createUserDto.role ?? 'MANAGER',
-            otp,
-            otpCreatedAt,
-          };
-
-          // If project is provided, upsert (update or create) the project
-          if (createUserDto.project) {
-            if (existingUser.Project && existingUser.Project.length > 0) {
-              // Update all existing projects (or adjust logic as needed)
-              updateData.Project = {
-                update: existingUser.Project.map((proj) => ({
-                  where: { id: proj.id },
-                  data: {
-                    name: createUserDto.project?.name,
-                    description: createUserDto.project?.description,
-                  },
-                })),
-              };
-            } else {
-              // Create a new project
-              updateData.Project = {
-                create: {
-                  name: createUserDto.project?.name,
-                  description: createUserDto.project?.description,
-                },
-              };
-            }
-          }
-
-          const updatedUser = await this.db.user.update({
-            where: { email: createUserDto.email },
-            data: updateData,
-            include: { Project: true },
-          });
-
-          // Send OTP email
-          await this.mailService.sendVerificationOTPEmail(
-            updatedUser.email,
-            otp,
-            updatedUser.name,
-          );
-          return this.responseService.sendSuccess(
-            res,
-            HttpStatus.OK,
-            'Otp Sent Successfully',
-            // updatedUser,
-          );
-        }
-        // If user is verified, block registration
-        return this.responseService.sendError(
+        // Send OTP email
+        await this.mailService.sendVerificationOTPEmail(
+          updatedUser.email,
+          updateData.otp,
+          updatedUser.name,
+        );
+        return this.responseService.sendSuccess(
           res,
-          HttpStatus.BAD_REQUEST,
-          'Email already Registered',
+          HttpStatus.OK,
+          'Otp Sent Successfully',
         );
       }
+      // If user is verified, block registration
+      return this.responseService.sendError(
+        res,
+        HttpStatus.BAD_REQUEST,
+        'Email already Registered',
+      );
+    }
 
-      const userData: any = {
+    // 1. Create the user first (without companyId)
+    const otp = this.helper.generateOTP();
+    const otpCreatedAt = new Date();
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+    const user = await this.db.user.create({
+      data: {
         name: createUserDto.name,
         email: createUserDto.email,
         password: hashedPassword,
@@ -109,52 +81,45 @@ export class UserService {
         role: createUserDto.role ?? 'MANAGER',
         otp,
         otpCreatedAt,
-      };
+        // companyId will be set after company creation
+      },
+    });
 
-      let user;
+    // 2. Create the company with ownerId as the new user's id
+    const company = await this.db.company.create({
+      data: {
+        companyName: createUserDto.company.companyName,
+        ownerId: user.id,
+      },
+    });
 
-      // If project is provided, create it with the user
-      if (createUserDto.project) {
-        user = await this.db.user.create({
-          data: {
-            ...userData,
-            Project: {
-              create: {
-                name: createUserDto.project?.name,
-                description: createUserDto.project?.description,
-              },
-            },
-          },
-          include: { Project: true },
-        });
-      } else {
-        user = await this.db.user.create({
-          data: userData,
-        });
-      }
+    // 3. Update the user with the new companyId
+    await this.db.user.update({
+      where: { id: user.id },
+      data: { companyId: company.id },
+    });
 
-      // Send OTP email
-      await this.mailService.sendVerificationOTPEmail(
-        user.email,
-        otp,
-        user.name,
-      );
+    // Send OTP email
+    await this.mailService.sendVerificationOTPEmail(
+      user.email,
+      otp,
+      user.name,
+    );
 
-      return this.responseService.sendSuccess(
-        res,
-        HttpStatus.CREATED,
-        'Otp sent successfully',
-        // user,
-      );
-    } catch (error) {
-      this.logger.error('Error creating user:', error);
-      return this.responseService.sendError(
-        res,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        'Failed to create user',
-      );
-    }
+    return this.responseService.sendSuccess(
+      res,
+      HttpStatus.CREATED,
+      'User and company created successfully. OTP sent.',
+    );
+  } catch (error) {
+    this.logger.error('Error creating user and company:', error);
+    return this.responseService.sendError(
+      res,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      'Failed to create user and company',
+    );
   }
+}
 
   async verifyUserOtp(
     res: Response,

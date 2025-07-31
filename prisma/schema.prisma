@@ -14,25 +14,41 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
-  email         String         @unique
+  email         String   @unique
   password      String
-  isApproved    Boolean        @default(true)
-  isVerified    Boolean        @default(false)
+  isApproved    Boolean  @default(true)
+  isVerified    Boolean  @default(false)
   otp           Int?
   otpCreatedAt  DateTime?
   sessionToken  String?
   lastLoginAt   DateTime?
-  role          Role           @default(MANAGER)
-  tasks         Task[]         @relation("AssignedTasks")
+  company       Company? @relation(fields: [companyId], references: [id])
+  companyId     String?
+  ownedCompany  Company? @relation("CompanyOwner")
+  role          Role     @default(MANAGER)
+  tasks         Task[]   @relation("AssignedTasks")
   comments      Comment[]
   notifications Notification[]
   activityLogs  ActivityLog[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   Project       Project[]
 }
+
+model Company {
+  id          String   @id @default(uuid())
+  companyName String
+  isApproved  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime @updatedAt
+  ownerId     String   @unique
+  owner       User     @relation("CompanyOwner", fields: [ownerId], references: [id])
+  users       User[]
+}
+
 
 enum Role {
   ADMIN

@@ -2,7 +2,7 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { ResponseService } from 'src/common/services/response.service';
 import { DatabaseService } from 'src/database/database.service';
-import { CreateProjectDto } from 'src/user/dto/UserCreate.dto';
+import { CreateProjectDto } from './dto/project.dto';
 import { UserService } from 'src/user/user.service';
 
 @Injectable()

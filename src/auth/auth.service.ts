@@ -15,7 +15,10 @@ export class AuthService {
 
   async login(res: Response, email: string, password: string) {
     try {
-      const user = await this.db.user.findUnique({ where: { email } });
+      const user = await this.db.user.findUnique({
+        where: { email },
+        include: { company: true },
+      });
 
       if (!user) {
         return this.responseService.sendError(
@@ -33,6 +36,15 @@ export class AuthService {
         );
       }
 
+      // If user must have a company and it must be approved:
+      if ( !user.company || !user.company.isApproved) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.UNAUTHORIZED,
+          'Company not approved or not found.',
+        );
+      }
+
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         return this.responseService.sendError(
@@ -42,7 +54,12 @@ export class AuthService {
         );
       }
 
-      const payload = { sub: user.id, email: user.email, role: user.role };
+      const payload = {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        companyId: user.company.id,
+      };
       const token = this.jwtService.sign(payload);
 
       // Update user's lastLoginAt and sessionToken
@@ -73,6 +90,4 @@ export class AuthService {
       );
     }
   }
-
-
 }
