@@ -84,8 +84,9 @@ model Project {
   tasks       Task[]
   sprints     Sprint[]
   members     ProjectMember[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model ProjectMember {
@@ -96,6 +97,9 @@ model ProjectMember {
   projectId String
   role      Role
   joinedAt  DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model Task {
@@ -122,8 +126,9 @@ model Task {
   attachments  Attachment[]
   watchers     User[]        @relation("TaskWatchers")
   ActivityLog  ActivityLog[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model Sprint {
@@ -135,14 +140,18 @@ model Sprint {
   project   Project  @relation(fields: [projectId], references: [id])
   projectId String
   tasks     Task[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model Label {
   id    String @id @default(uuid())
   name  String @unique
   tasks Task[] @relation("TaskLabels")
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model Comment {
@@ -152,8 +161,9 @@ model Comment {
   taskId    String
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model Notification {
@@ -163,7 +173,9 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id])
   userId    String
   read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model ActivityLog {
@@ -173,7 +185,9 @@ model ActivityLog {
   taskId    String?
   user      User     @relation(fields: [userId], references: [id])
   userId    String
-  createdAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
 
 model Attachment {
@@ -184,4 +198,7 @@ model Attachment {
   task       Task     @relation(fields: [taskId], references: [id])
   taskId     String
   uploadedAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 }
