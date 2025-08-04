@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
 
-interface EmailOptions {
+export interface EmailOptions {
   to: string;
   subject: string;
   text?: string;
