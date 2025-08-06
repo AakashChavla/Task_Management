@@ -1,9 +1,17 @@
 import { Injectable, HttpStatus } from "@nestjs/common";
 import { ResponseService } from "src/common/services/response.service";
 import { DatabaseService } from "src/database/database.service";
-import { CreateUserDto } from "./dto/UserCreate.dto";
+import {
+  CreateUserDto,
+  UpdatePasswordDto,
+  UpdateUserDto,
+} from "./dto/UserCreate.dto";
 import { Response } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
+import {
+  PaginationMeta,
+  PaginationQuery,
+} from "src/common/interfaces/pagination";
 
 @Injectable()
 export class UserService {
@@ -61,7 +69,7 @@ export class UserService {
           return this.responseService.sendSuccess(
             res,
             HttpStatus.OK,
-            "User and company updated successfully",
+            "User and company register successfully",
             { userId: updatedUser.id, companyId: company.id }
           );
         }
@@ -113,6 +121,180 @@ export class UserService {
         res,
         HttpStatus.INTERNAL_SERVER_ERROR,
         "Registration failed",
+        error.message || error
+      );
+    }
+  }
+
+  async updateUser(
+    res: Response,
+    userId: string,
+    updateUserDto: UpdateUserDto
+  ) {
+    try {
+      // Find the user
+      const user = await this.db.user.findUnique({
+        where: { id: userId },
+        include: { company: true },
+      });
+
+      if (!user) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          "User not found"
+        );
+      }
+
+      // Prepare update data for user
+      const userUpdateData: any = {};
+      if (updateUserDto.name) userUpdateData.name = updateUserDto.name;
+      if (updateUserDto.email) userUpdateData.email = updateUserDto.email;
+
+      // Update user
+      const updatedUser = await this.db.user.update({
+        where: { id: userId },
+        data: userUpdateData,
+      });
+
+      // Update company if companyName is provided
+      let updatedCompany: any = null;
+      if (updateUserDto.companyName && user.companyId) {
+        updatedCompany = await this.db.company.update({
+          where: { id: user.companyId },
+          data: { companyName: updateUserDto.companyName },
+        });
+      }
+
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        "User updated successfully",
+        { user: updatedUser, company: updatedCompany }
+      );
+    } catch (error) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Update failed",
+        error.message || error
+      );
+    }
+  }
+
+  async updatePassword(
+    res: Response,
+    userId: string,
+    updatePasswordDto: UpdatePasswordDto
+  ) {
+    try {
+      const user = await this.db.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          "User not found"
+        );
+      }
+
+      // Verify old password
+      const isOldPasswordValid = await bcrypt.compare(
+        updatePasswordDto.oldPassword,
+        user.password
+      );
+      if (!isOldPasswordValid) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          "Old password is incorrect"
+        );
+      }
+
+      // Hash and update new password
+      const hashedNewPassword = await bcrypt.hash(
+        updatePasswordDto.newPassword,
+        10
+      );
+      await this.db.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword },
+      });
+
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        "Password updated successfully"
+      );
+    } catch (error) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Password update failed",
+        error.message || error
+      );
+    }
+  }
+
+  async listCompanyUsers(
+    res: Response,
+    companyId: string,
+    PaginationQuery: PaginationQuery
+  ) {
+    try {
+      const {
+        limit = 10,
+        page = 1,
+        orderBy = "asc",
+        orderField = "name",
+      } = PaginationQuery;
+
+      // Count total users for pagination meta
+      const totalItems = await this.db.user.count({
+        where: { companyId },
+      });
+
+      // Fetch users with pagination
+      const users = await this.db.user.findMany({
+        where: { companyId },
+        orderBy: { [orderField]: orderBy },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isApproved: true,
+          isVerified: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      // Pagination meta
+      const pagination: PaginationMeta = {
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit),
+        currentPage: page,
+        itemsPerPage: limit,
+        hasNextPage: page * limit < totalItems,
+        hasPreviousPage: page > 1,
+      };
+
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        "Company users fetched successfully",
+        { users, pagination }
+      );
+    } catch (error) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Failed to fetch company users",
         error.message || error
       );
     }

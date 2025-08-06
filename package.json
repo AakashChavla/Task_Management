@@ -36,7 +36,8 @@
     "nodemailer": "^7.0.5",
     "prisma": "^6.13.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",

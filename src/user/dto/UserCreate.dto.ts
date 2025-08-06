@@ -1,5 +1,11 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsString, IsEmail, MinLength, ValidateNested } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  IsString,
+  IsEmail,
+  MinLength,
+  ValidateNested,
+  IsOptional,
+} from "class-validator";
 import { Type } from "class-transformer";
 
 export class CreateUserDto {
@@ -21,4 +27,35 @@ export class CreateUserDto {
   @IsString({ message: "Company name must be a string" })
   @MinLength(2, { message: "Company name must be at least 2 characters" })
   companyName: string;
+}
+
+export class UpdateUserDto {
+  @ApiPropertyOptional({ example: "John Doe" })
+  @IsOptional()
+  @IsString({ message: "Name must be a string" })
+  @MinLength(2, { message: "Name must be at least 2 characters" })
+  name?: string;
+
+  @ApiPropertyOptional({ example: "john@example.com" })
+  @IsOptional()
+  @IsEmail({}, { message: "Invalid email address" })
+  email?: string;
+
+  @ApiPropertyOptional({ example: "Acme Corp" })
+  @IsOptional()
+  @IsString({ message: "Company name must be a string" })
+  @MinLength(2, { message: "Company name must be at least 2 characters" })
+  companyName?: string;
+}
+
+export class UpdatePasswordDto {
+  @ApiProperty({ example: "oldpassword123" })
+  @IsString({ message: "Old password must be a string" })
+  @MinLength(6, { message: "Old password must be at least 6 characters" })
+  oldPassword: string;
+
+  @ApiProperty({ example: "newpassword456" })
+  @IsString({ message: "New password must be a string" })
+  @MinLength(6, { message: "New password must be at least 6 characters" })
+  newPassword: string;
 }
