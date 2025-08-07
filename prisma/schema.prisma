@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+  MANAGER
+}
+
+enum Status {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  BLOCKED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskType {
+  BUG
+  STORY
+  TASK
+  SUBTASK
+  EPIC
+}
+
+model User {
+  id                 String          @id @default(uuid())
+  name               String
+  email              String          @unique
+  password           String
+  isApproved         Boolean         @default(true)
+  isVerified         Boolean         @default(false)
+  otp                Int?
+  otpCreatedAt       DateTime?
+  sessionToken       String?
+  lastLoginAt        DateTime?
+  company            Company?        @relation(fields: [companyId], references: [id])
+  companyId          String?
+  ownedCompany       Company?        @relation("CompanyOwner")
+  role               Role            @default(MANAGER)
+  tasks              Task[]          @relation("AssignedTasks")
+  comments           Comment[]
+  notifications      Notification[]
+  activityLogs       ActivityLog[]
+  projectMemberships ProjectMember[]
+  watchingTasks      Task[]          @relation("TaskWatchers")
+  createdProjects    Project[]       @relation("CreatedProjects")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
+
+model Company {
+  id          String    @id @default(uuid())
+  companyName String
+  isApproved  Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
+  ownerId     String    @unique
+  owner       User      @relation("CompanyOwner", fields: [ownerId], references: [id])
+  users       User[]
+  projects    Project[] 
+}
+
+model Project {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  createdBy   User            @relation("CreatedProjects", fields: [createdById], references: [id])
+  createdById String
+  company     Company    @relation(fields: [companyId], references: [id]) // <-- Add this line
+  companyId   String
+  tasks       Task[]
+  sprints     Sprint[]
+  members     ProjectMember[]
+  createdAt   DateTime        @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime        @updatedAt
+}
+
+model ProjectMember {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  project   Project   @relation(fields: [projectId], references: [id])
+  projectId String
+  joinedAt  DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model Task {
+  id           String        @id @default(uuid())
+  title        String
+  description  String?
+  type         TaskType      @default(TASK)
+  status       Status        @default(TODO)
+  priority     Priority      @default(MEDIUM)
+  storyPoints  Int?
+  estimate     Int? // In minutes
+  dueDate      DateTime?
+  project      Project       @relation(fields: [projectId], references: [id])
+  projectId    String
+  sprint       Sprint?       @relation(fields: [sprintId], references: [id])
+  sprintId     String?
+  assignedTo   User?         @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  assignedToId String?
+  parent       Task?         @relation("ParentTask", fields: [parentId], references: [id])
+  parentId     String?
+  subtasks     Task[]        @relation("ParentTask")
+  labels       Label[]       @relation("TaskLabels")
+  comments     Comment[]
+  attachments  Attachment[]
+  watchers     User[]        @relation("TaskWatchers")
+  ActivityLog  ActivityLog[]
+  createdAt    DateTime      @default(now())
+  deletedAt    DateTime?
+  updatedAt    DateTime      @updatedAt
+}
+
+model Sprint {
+  id        String    @id @default(uuid())
+  name      String
+  goal      String?
+  startDate DateTime
+  endDate   DateTime
+  project   Project   @relation(fields: [projectId], references: [id])
+  projectId String
+  tasks     Task[]
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model Label {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  tasks     Task[]    @relation("TaskLabels")
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  content   String
+  task      Task      @relation(fields: [taskId], references: [id])
+  taskId    String
+  author    User      @relation(fields: [authorId], references: [id])
+  authorId  String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  type      String
+  message   String
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model ActivityLog {
+  id        String    @id @default(uuid())
+  action    String
+  task      Task?     @relation(fields: [taskId], references: [id])
+  taskId    String?
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model Attachment {
+  id         String    @id @default(uuid())
+  fileUrl    String
+  fileName   String
+  fileType   String
+  task       Task      @relation(fields: [taskId], references: [id])
+  taskId     String
+  uploadedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+  updatedAt  DateTime  @updatedAt
+}
