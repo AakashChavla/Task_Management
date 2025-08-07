@@ -12,6 +12,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from "./auth/auth.service";
 import { CommonModule } from "./common/common.module";
 import { ProjectModule } from './project/project.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ProjectModule } from './project/project.module';
     AuthModule,
     CommonModule,
     ProjectModule,
+    TaskModule,
   ],
   controllers: [AppController],
   providers: [
