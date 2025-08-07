@@ -6,125 +6,150 @@ import {
   UpdatePasswordDto,
   UpdateUserDto,
 } from "./dto/UserCreate.dto";
-import { Response } from "@nestjs/common";
 import * as bcrypt from "bcrypt";
 import {
   PaginationMeta,
   PaginationQuery,
 } from "src/common/interfaces/pagination";
+import { MailService } from "src/common/mail/mail.service";
+import { addMinutes } from "date-fns"; // npm install date-fns (or use new Date logic)
+
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly db: DatabaseService,
-    private readonly responseService: ResponseService
+    private readonly responseService: ResponseService,
+    private readonly mailService: MailService
   ) {}
 
-  async registerUser(res: Response, createUserDto: CreateUserDto) {
-    try {
-      // Check if email already exists
-      const existingUser = await this.db.user.findUnique({
-        where: { email: createUserDto.email },
-      });
+ async registerUser(res: Response, createUserDto: CreateUserDto) {
+  try {
+    // Check if email already exists
+    const existingUser = await this.db.user.findUnique({
+      where: { email: createUserDto.email },
+    });
 
-      if (existingUser) {
-        if (!existingUser.isVerified) {
-          // Update user data
-          const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-          const updatedUser = await this.db.user.update({
-            where: { email: createUserDto.email },
+    // Generate OTP and expiry (10 minutes from now)
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const otpCreatedAt = new Date();
+
+    if (existingUser) {
+      if (!existingUser.isVerified) {
+        // Update user data and save OTP
+        const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+        const updatedUser = await this.db.user.update({
+          where: { email: createUserDto.email },
+          data: {
+            name: createUserDto.name,
+            password: hashedPassword,
+            isApproved: true,
+            otp,
+            otpCreatedAt,
+          },
+        });
+
+        // Update or create company for this user
+        let company;
+        if (updatedUser.companyId) {
+          company = await this.db.company.update({
+            where: { id: updatedUser.companyId },
             data: {
-              name: createUserDto.name,
-              password: hashedPassword,
+              companyName: createUserDto.companyName,
               isApproved: true,
+              ownerId: updatedUser.id,
             },
           });
-
-          // Update or create company for this user
-          let company;
-          if (updatedUser.companyId) {
-            company = await this.db.company.update({
-              where: { id: updatedUser.companyId },
-              data: {
-                companyName: createUserDto.companyName,
-                isApproved: true,
-                ownerId: updatedUser.id,
-              },
-            });
-          } else {
-            company = await this.db.company.create({
-              data: {
-                companyName: createUserDto.companyName,
-                isApproved: true,
-                ownerId: updatedUser.id,
-              },
-            });
-            // Link company to user
-            await this.db.user.update({
-              where: { id: updatedUser.id },
-              data: { companyId: company.id },
-            });
-          }
-
-          return this.responseService.sendSuccess(
-            res,
-            HttpStatus.OK,
-            "User and company register successfully",
-            { userId: updatedUser.id, companyId: company.id }
-          );
+        } else {
+          company = await this.db.company.create({
+            data: {
+              companyName: createUserDto.companyName,
+              isApproved: true,
+              ownerId: updatedUser.id,
+            },
+          });
+          // Link company to user
+          await this.db.user.update({
+            where: { id: updatedUser.id },
+            data: { companyId: company.id },
+          });
         }
-        // If user is verified, block registration
-        return this.responseService.sendError(
+
+        // Send OTP email
+        await this.mailService.sendEmail({
+          to: updatedUser.email,
+          subject: "Your Task Management OTP Verification Code",
+          html: this.mailService.getOtpVerificationMailTemplate(updatedUser.name, otp.toString()),
+        });
+
+        return this.responseService.sendSuccess(
           res,
-          HttpStatus.BAD_REQUEST,
-          "Email already registered"
+          HttpStatus.OK,
+          "User and company registered successfully. Please check your email for the OTP.",
+          { userId: updatedUser.id, companyId: company.id }
         );
       }
-
-      // Hash password
-      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-
-      // Create user first (without companyId)
-      const user = await this.db.user.create({
-        data: {
-          name: createUserDto.name,
-          email: createUserDto.email,
-          password: hashedPassword,
-          isApproved: true,
-          isVerified: false,
-        },
-      });
-
-      // Create company with ownerId as the new user's id
-      const company = await this.db.company.create({
-        data: {
-          companyName: createUserDto.companyName,
-          isApproved: true,
-          ownerId: user.id,
-        },
-      });
-
-      // Update user with companyId
-      await this.db.user.update({
-        where: { id: user.id },
-        data: { companyId: company.id },
-      });
-
-      return this.responseService.sendSuccess(
-        res,
-        HttpStatus.CREATED,
-        "User and company registered successfully",
-        { userId: user.id, companyId: company.id }
-      );
-    } catch (error) {
+      // If user is verified, block registration
       return this.responseService.sendError(
         res,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        "Registration failed",
-        error.message || error
+        HttpStatus.BAD_REQUEST,
+        "Email already registered"
       );
     }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+    // Create user first (without companyId), save OTP and expiry
+    const user = await this.db.user.create({
+      data: {
+        name: createUserDto.name,
+        email: createUserDto.email,
+        password: hashedPassword,
+        isApproved: true,
+        isVerified: false,
+        otp,
+        otpCreatedAt,
+      },
+    });
+
+    // Create company with ownerId as the new user's id
+    const company = await this.db.company.create({
+      data: {
+        companyName: createUserDto.companyName,
+        isApproved: true,
+        ownerId: user.id,
+      },
+    });
+
+    // Update user with companyId
+    await this.db.user.update({
+      where: { id: user.id },
+      data: { companyId: company.id },
+    });
+
+    // Send OTP email
+    await this.mailService.sendEmail({
+      to: user.email,
+      subject: "Your Task Management OTP Verification Code",
+      html: this.mailService.getOtpVerificationMailTemplate(user.name, otp.toString()),
+    });
+
+    return this.responseService.sendSuccess(
+      res,
+      HttpStatus.CREATED,
+      "User and company registered successfully. Please check your email for the OTP.",
+      { userId: user.id, companyId: company.id }
+    );
+  } catch (error) {
+    return this.responseService.sendError(
+      res,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      "Registration failed",
+      error.message || error
+    );
   }
+}
 
   async updateUser(
     res: Response,

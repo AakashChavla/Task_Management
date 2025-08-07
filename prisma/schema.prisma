@@ -73,6 +73,7 @@ model Company {
   ownerId     String    @unique
   owner       User      @relation("CompanyOwner", fields: [ownerId], references: [id])
   users       User[]
+  projects    Project[] 
 }
 
 model Project {
@@ -81,6 +82,8 @@ model Project {
   description String?
   createdBy   User            @relation("CreatedProjects", fields: [createdById], references: [id])
   createdById String
+  company     Company    @relation(fields: [companyId], references: [id]) // <-- Add this line
+  companyId   String
   tasks       Task[]
   sprints     Sprint[]
   members     ProjectMember[]
@@ -95,7 +98,6 @@ model ProjectMember {
   userId    String
   project   Project   @relation(fields: [projectId], references: [id])
   projectId String
-  role      Role
   joinedAt  DateTime  @default(now())
   createdAt DateTime  @default(now())
   deletedAt DateTime?

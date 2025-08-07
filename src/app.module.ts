@@ -11,6 +11,7 @@ import { AuthGuard } from './auth/guards/auth.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from "./auth/auth.service";
 import { CommonModule } from "./common/common.module";
+import { ProjectModule } from './project/project.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CommonModule } from "./common/common.module";
     MailModule,
     AuthModule,
     CommonModule,
+    ProjectModule,
   ],
   controllers: [AppController],
   providers: [

@@ -83,28 +83,33 @@ export class MailService {
     }
   }
 
-  // async sendVerificationEmail() {
-  //   const subject = "";
-  //   const html = `
-  //   `;
+  async sendVerificationEmail() {
+    const subject = "";
+    const html = `
+    `;
 
-  //   return this.sendEmail({ to, subject, html });
-  // }
+    // return this.sendEmail({ to, subject, html });
+  }
 
-  getVerificationMailTemplate(userName: string, verificationLink: string) {
+  getOtpVerificationMailTemplate(userName: string, otp: string) {
     return `
-    <div style="font-family: Arial, sans-serif; background: #f6f8fa; padding: 40px;">
-      <div style="max-width: 500px; margin: auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eaeaea;">
+    <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 40px;">
+      <div style="max-width: 500px; margin: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 12px #e2e8f0;">
         <div style="padding: 32px;">
-          <h2 style="color: #2d3748;">Welcome to Task Management, ${userName}!</h2>
+          <h2 style="color: #2b6cb0; margin-bottom: 16px;">Hello, ${userName}!</h2>
           <p style="font-size: 16px; color: #4a5568;">
-            Thank you for registering. Please verify your email to activate your account.
+            Use the following OTP to verify your email address:
           </p>
-          <a href="${verificationLink}" style="display: inline-block; margin-top: 24px; padding: 12px 24px; background: #3182ce; color: #fff; border-radius: 4px; text-decoration: none; font-weight: bold;">
-            Verify Email
-          </a>
-          <p style="margin-top: 32px; font-size: 12px; color: #a0aec0;">
-            If you did not request this, please ignore this email.
+          <div style="margin: 32px 0; text-align: center;">
+            <span style="display: inline-block; font-size: 32px; letter-spacing: 8px; background: #e6f0fa; color: #2b6cb0; padding: 16px 32px; border-radius: 8px; font-weight: bold;">
+              ${otp}
+            </span>
+          </div>
+          <p style="font-size: 14px; color: #718096;">
+            This OTP is valid for 10 minutes. If you did not request this, please ignore this email.
+          </p>
+          <p style="margin-top: 36px; font-size: 13px; color: #a0aec0;">
+            &mdash; The Task Management Team
           </p>
         </div>
       </div>
