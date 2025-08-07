@@ -1,6 +1,11 @@
 import { Injectable, HttpStatus } from "@nestjs/common";
 import { DatabaseService } from "src/database/database.service";
-import { CreateProjectDto, UpdateProjectDto } from "./dto/project.dto";
+import {
+  CreateProjectDto,
+  CreateProjectMemberDto,
+  UpdateProjectDto,
+  UpdateProjectMemberDto,
+} from "./dto/project.dto";
 import { ResponseService } from "src/common/services/response.service";
 import { Response } from "express";
 import { plainToInstance } from "class-transformer";
@@ -297,6 +302,242 @@ export class ProjectService {
         res,
         HttpStatus.INTERNAL_SERVER_ERROR,
         "Failed to fetch project",
+        error.message || error
+      );
+    }
+  }
+
+  async addProjectMember(res: Response, dto: CreateProjectMemberDto) {
+    try {
+      // Validate DTO
+      const dtoInstance = plainToInstance(CreateProjectMemberDto, dto);
+      const errors = await validate(dtoInstance);
+      if (errors.length > 0) {
+        const messages = errors
+          .map((err) => Object.values(err.constraints || {}))
+          .flat();
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          "Validation failed",
+          messages
+        );
+      }
+
+      // Check project exists
+      const project = await this.db.project.findUnique({
+        where: { id: dto.projectId },
+      });
+      if (!project) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          "Project not found"
+        );
+      }
+
+      // Check user exists
+      const user = await this.db.user.findUnique({ where: { id: dto.userId } });
+      if (!user) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          "User not found"
+        );
+      }
+
+      // Check both belong to same company
+      if (project.companyId !== user.companyId) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          "User and project must belong to the same company"
+        );
+      }
+
+      // Check if already a member
+      const alreadyMember = await this.db.projectMember.findFirst({
+        where: { projectId: dto.projectId, userId: dto.userId },
+      });
+      if (alreadyMember) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          "User is already a member of this project"
+        );
+      }
+
+      const member = await this.db.projectMember.create({
+        data: {
+          projectId: dto.projectId,
+          userId: dto.userId,
+        },
+      });
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.CREATED,
+        "Member added",
+        member
+      );
+    } catch (error) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Add member failed",
+        error.message || error
+      );
+    }
+  }
+
+  async listProjectMembers(res: Response, projectId: string) {
+    try {
+      // Validate projectId
+      if (!projectId || typeof projectId !== "string") {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          "Invalid project ID"
+        );
+      }
+
+      // Check project exists
+      const project = await this.db.project.findUnique({
+        where: { id: projectId },
+      });
+      if (!project) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          "Project not found"
+        );
+      }
+
+      const members = await this.db.projectMember.findMany({
+        where: { projectId },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      });
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        "Members fetched",
+        members
+      );
+    } catch (error) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Fetch failed",
+        error.message || error
+      );
+    }
+  }
+
+  async updateProjectMember(
+    res: Response,
+    id: string,
+    dto: UpdateProjectMemberDto
+  ) {
+    try {
+      // Validate DTO
+      const dtoInstance = plainToInstance(UpdateProjectMemberDto, dto);
+      const errors = await validate(dtoInstance);
+      if (errors.length > 0) {
+        const messages = errors
+          .map((err) => Object.values(err.constraints || {}))
+          .flat();
+        return this.responseService.sendError(
+          res,
+          HttpStatus.BAD_REQUEST,
+          "Validation failed",
+          messages
+        );
+      }
+
+      // Check member exists
+      const member = await this.db.projectMember.findUnique({ where: { id } });
+      if (!member) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          "Project member not found"
+        );
+      }
+
+      // If updating userId, check company match
+      if (dto.userId) {
+        const user = await this.db.user.findUnique({
+          where: { id: dto.userId },
+        });
+        if (!user) {
+          return this.responseService.sendError(
+            res,
+            HttpStatus.NOT_FOUND,
+            "User not found"
+          );
+        }
+        const project = await this.db.project.findUnique({
+          where: { id: member.projectId },
+        });
+
+        if (!project) {
+          return this.responseService.sendError(
+            res,
+            HttpStatus.NOT_FOUND,
+            "Project not found"
+          );
+        }
+        if (project.companyId !== user.companyId) {
+          return this.responseService.sendError(
+            res,
+            HttpStatus.BAD_REQUEST,
+            "User and project must belong to the same company"
+          );
+        }
+      }
+
+      const updated = await this.db.projectMember.update({
+        where: { id },
+        data: { ...dto },
+      });
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        "Member updated",
+        updated
+      );
+    } catch (error) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Update failed",
+        error.message || error
+      );
+    }
+  }
+
+  async deleteProjectMember(res: Response, id: string) {
+    try {
+      // Check member exists
+      const member = await this.db.projectMember.findUnique({ where: { id } });
+      if (!member) {
+        return this.responseService.sendError(
+          res,
+          HttpStatus.NOT_FOUND,
+          "Project member not found"
+        );
+      }
+
+      await this.db.projectMember.delete({ where: { id } });
+      return this.responseService.sendSuccess(
+        res,
+        HttpStatus.OK,
+        "Member deleted"
+      );
+    } catch (error) {
+      return this.responseService.sendError(
+        res,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Delete failed",
         error.message || error
       );
     }

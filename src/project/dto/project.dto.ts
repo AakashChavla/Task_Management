@@ -25,3 +25,20 @@ export class UpdateProjectDto {
   @IsString({ message: "Description must be a string" })
   description?: string;
 }
+
+export class CreateProjectMemberDto {
+  @ApiProperty({ example: "project-uuid" })
+  @IsString()
+  projectId: string;
+
+  @ApiProperty({ example: "user-uuid" })
+  @IsString()
+  userId: string;
+}
+
+export class UpdateProjectMemberDto {
+  @ApiPropertyOptional({ example: "user-uuid" })
+  @IsOptional()
+  @IsString()
+  userId?: string;
+}
