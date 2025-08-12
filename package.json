@@ -41,7 +41,11 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@nestjs/testing": "^11.1.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.2.0",
-    "@types/nodemailer": "^6.4.17"
+    "@types/nodemailer": "^6.4.17",
+    "jest": "^30.0.5",
+    "ts-jest": "^29.4.1"
   }
 }
