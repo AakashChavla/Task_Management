@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { TaskService } from "./task.service";
+import { ListTasksQuery, TaskService } from "./task.service";
 import { CreateTaskDto, UpdateTaskDto } from "./dto/task.dto";
 import { Response } from "express";
 import {
@@ -19,6 +19,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiOperation,
+  ApiQuery,
 } from "@nestjs/swagger";
 import { AuthGuard } from "src/auth/guards/auth.guard";
 
@@ -88,4 +89,48 @@ export class TaskController {
   async listTasks(@Res() res: Response, @Param("projectId") projectId: string) {
     return this.taskService.listTasks(res, projectId);
   }
+
+  @Get()
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get tasks with filters, pagination, and search." })
+  @ApiQuery({ name: "projectId", required: false, type: String })
+  @ApiQuery({ name: "parentId", required: false, type: String })
+  @ApiQuery({ name: "assignedToId", required: false, type: String })
+  @ApiQuery({
+    name: "query",
+    required: false,
+    type: String,
+    description: "Search text",
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: "Items per page",
+  })
+  @ApiQuery({
+    name: "page",
+    required: false,
+    type: Number,
+    description: "Page number",
+  })
+  @ApiQuery({
+    name: "orderBy",
+    required: false,
+    type: String,
+    description: "Order direction (asc/desc)",
+  })
+  @ApiQuery({
+    name: "orderField",
+    required: false,
+    type: String,
+    description: "Order by field (e.g. createdAt)",
+  })
+  @ApiResponse({ status: 200, description: "Tasks fetched" })
+  @ApiResponse({ status: 500, description: "Fetch failed" })
+  async getTasks(@Res() res: Response, @Query() query: ListTasksQuery) {
+    return this.taskService.getTasks(res, query);
+  }
 }
+
