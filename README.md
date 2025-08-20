@@ -1,4 +1,4 @@
-# Task_Management# 🚀 Task Management System
+# 🚀 Task Management System
 
 A modern, scalable, and secure platform for managing users, companies, projects, and tasks.  
 Built with **NestJS**, **Prisma**, and **PostgreSQL** for enterprise-grade reliability.
@@ -29,13 +29,24 @@ Built with **NestJS**, **Prisma**, and **PostgreSQL** for enterprise-grade relia
   - Add, update, remove project members
   - Company-based member validation
 
+- **Task Management**
+
+  - Create, update, delete tasks
+  - Assign tasks to users
+  - List tasks by project, parent, assignee
+  - Pagination and search support
+
 - **Role-Based Access**
 
   - Manager, User, and custom roles
   - Guards and decorators for secure endpoints
 
 - **Swagger API Docs**
+
   - Auto-generated, interactive API documentation
+
+- **Unit Testing**
+  - Comprehensive tests for controllers and services
 
 ---
 
@@ -47,6 +58,7 @@ Built with **NestJS**, **Prisma**, and **PostgreSQL** for enterprise-grade relia
 - **Validation:** [class-validator](https://github.com/typestack/class-validator)
 - **Authentication:** JWT, Guards, Decorators
 - **API Docs:** [Swagger](https://swagger.io/)
+- **Testing:** [Jest](https://jestjs.io/)
 
 ---
 
@@ -55,8 +67,9 @@ Built with **NestJS**, **Prisma**, and **PostgreSQL** for enterprise-grade relia
 ```
 src/
   ├── common/         # Shared services (mail, response, etc.)
-  ├── user/           # User module (controller, service, DTOs)
-  ├── project/        # Project & member module
+  ├── user/           # User module (controller, service, DTOs, tests)
+  ├── project/        # Project & member module (controller, service, DTOs, tests)
+  ├── task/           # Task module (controller, service, DTOs, tests)
   ├── database/       # Prisma client & config
   ├── auth/           # Auth module (JWT, guards, decorators)
   └── prisma/         # Prisma schema
@@ -95,7 +108,13 @@ src/
    npm run start:dev
    ```
 
-6. **Access Swagger Docs**
+6. **Run tests**
+
+   ```bash
+   npm run test
+   ```
+
+7. **Access Swagger Docs**
    - Visit [http://localhost:3000/api](http://localhost:3000/api) for interactive API documentation.
 
 ---
@@ -106,20 +125,26 @@ src/
 - **Login & Auth:** `/auth/login`
 - **Project CRUD:** `/project`
 - **Project Members:** `/project/member`
+- **Task CRUD & Listing:** `/task`
 - **Company Users:** `/user/company/users`
+
+---
+
+## 🧪 Testing
+
+- All modules include unit tests for controllers and services.
+- Run all tests with:
+
+  ```bash
+  npm run test
+  ```
 
 ---
 
 ## 🎨 Screenshots
 
-> _Add screenshots of your Swagger UI, registration flow, and project dashboard here!_
+> _Add screenshots of your Swagger UI, registration flow, and project/task dashboard here!_
 
 ---
 
-
-## 📝 License
-
-MIT © 2025 
-
----
-
+## 📝
