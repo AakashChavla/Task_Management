@@ -14,6 +14,7 @@ import { CommonModule } from "./common/common.module";
 import { ProjectModule } from './project/project.module';
 import { TaskModule } from './task/task.module';
 import { SprintModule } from './sprint/sprint.module';
+import { LabelModule } from './label/label.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SprintModule } from './sprint/sprint.module';
     ProjectModule,
     TaskModule,
     SprintModule,
+    LabelModule,
   ],
   controllers: [AppController],
   providers: [
