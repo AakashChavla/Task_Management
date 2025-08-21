@@ -7,8 +7,10 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-RUN npm run build
+
+# Generate Prisma client BEFORE building
 RUN npx prisma generate
+RUN npm run build
 
 # ---- Production Stage ----
 FROM node:20-alpine
